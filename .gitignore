@@ -3,6 +3,7 @@ activator
 activator-launch-1.2.10.jar
 activator.bat
 README.html
+public/images/incoming.svg
 project/project
 project/target
 target/*

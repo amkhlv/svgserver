@@ -93,7 +93,7 @@ location @proxy_svg {
     proxy_set_header        X-Forwarded-Ssl    on;
     proxy_set_header        X-Forwarded-For    $proxy_add_x_forwarded_for;
 }</pre><p>And, finally, run it:</p><pre>sudo -u www-data /<span class="kw">var</span>/www/svgserver/bin/svgserver -Dhttp.port=<span class="num">39001</span> -Dhttp.address=<span class="num">127.0</span>.<span class="num">0.1</span> \
--Dconfig.file=/<span class="kw">var</span>/www/svgserver.conf -Dpidfile.path=/tmp/svgserver.pid</pre><p><b>Attention: the Java version where we compiled should not be greater than the Java version on the server!</b></p></div></div>
+-Dconfig.file=/<span class="kw">var</span>/www/svgserver.conf -Dpidfile.path=/tmp/svgserver.pid</pre><p><b>Attention: the Java version where we compiled should not be greater than the Java version on the server!</b></p><h3> Use via remote SSH forwarding </h3><p>On your local machine, execute:</p><pre>ssh -R <span class="num">39001</span>:localhost:<span class="num">9000</span>  $SVGSERVER</pre><p>where <code>$SVGSERVER</code> is the address of you server machine (typically VPS).</p><p>Then in the <code>svgserver</code> directory of you local machine, simply run:</p><pre>./activator run</pre><p>(this will listen by default on port 9000)</p></div></div>
         
 
       <div id="mbrsel">

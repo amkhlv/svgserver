@@ -100,3 +100,28 @@ sudo -u www-data /var/www/svgserver/bin/svgserver -Dhttp.port=39001 -Dhttp.addre
 }}}
 
 '''Attention: the Java version where we compiled should not be greater than the Java version on the server!'''
+
+= Use via remote SSH forwarding =
+
+It is possible to use this `svgserver` without `mathpump`, using the SSH tunnel.
+
+On your local machine, execute:
+
+{{{
+ssh -R 39001:localhost:9000  $SVGSERVER
+}}}
+
+where `$SVGSERVER` is the address of you server machine (typically VPS).
+
+Set `svgserver.secure=true`  in `conf/application.conf`
+
+Then in the `svgserver` directory of you local machine, simply run:
+
+{{{
+./activator run
+}}}
+
+(this will listen by default on port 9000)
+
+Then simply go to the directory which you specified in `application.conf` as `svgserver.svgroot` and edit SVG files
+there.
