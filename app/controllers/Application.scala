@@ -17,6 +17,12 @@ object Application extends Controller {
   def readFromFilePath(filePath: Path): String =
     java.nio.file.Files.readAllLines(filePath, java.nio.charset.StandardCharsets.UTF_8).mkString(separator)
 
+  def statusFile =
+    Play.current.configuration.getString("svgserver.statusfile") match {
+      case Some(s) => s
+      case None => throw new RuntimeException("ERROR: have to define svgserver.statusfile in Configuration")
+    }
+
   def svgRoot =
     Play.current.configuration.getString("svgserver.svgroot") match {
       case Some(s) => s
@@ -39,14 +45,20 @@ object Application extends Controller {
     (lines.drop(3)).mkString(separator)
   }
 
-
+  def readFromWS(s: String) = {
+    val fw = new FileWriter(statusFile, true)
+    try {
+      fw.write(s + "\n")
+    }
+    finally fw.close()
+  }
 
   def webSock = WebSocket.using[String] {
     request =>
-
-      // Log events to the console
-      val in = Iteratee.foreach[String](println).map {
-        _ => println("Disconnected")
+      val in = Iteratee.foreach[String](readFromWS).map {
+        x => {
+          println("Disconnected");
+        }
       }
       var needToSendFile = true;
       var previouslySent = ""

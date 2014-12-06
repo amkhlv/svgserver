@@ -49,6 +49,7 @@ ws.onmessage =  function( message ) {
       console.log(mdata.substring(5));
     }
     s.innerHTML = prevText;
+    ws.send("OK");
 };
 </script>
 
