@@ -10,6 +10,8 @@ import java.nio.file.{Paths, Files, StandardOpenOption, Path, StandardWatchEvent
 import scala.collection.JavaConversions._
 import play.api.Play
 import scala.sys.process._
+import java.security.MessageDigest
+
 
 object Application extends Controller {
   val separator = sys.props("line.separator")
@@ -52,9 +54,19 @@ object Application extends Controller {
     }
     finally fw.close()
   }
+  val fsys = Paths.get(svgRoot).getFileSystem()
+  val watcher = fsys.newWatchService()
+  val myDir = Paths.get(svgRoot)
+  def md5(s: String) = {
+    MessageDigest.getInstance("MD5").digest(s.getBytes).map("%02X".format(_)).mkString
+}
 
   def webSock = WebSocket.using[String] {
     request =>
+      myDir.register(watcher,
+        StandardWatchEventKinds.ENTRY_CREATE,
+        StandardWatchEventKinds.ENTRY_DELETE,
+        StandardWatchEventKinds.ENTRY_MODIFY)
       val in = Iteratee.foreach[String](readFromWS).map {
         x => {
           println("Disconnected");
@@ -66,19 +78,14 @@ object Application extends Controller {
         scala.concurrent.Future {
           // Thread.sleep(2)
           // "current time %s".format((new java.util.Date()))
-          val fsys = Paths.get(svgRoot).getFileSystem()
-          val watcher = fsys.newWatchService()
-          val myDir = Paths.get(svgRoot)
-          myDir.register(watcher,
-            StandardWatchEventKinds.ENTRY_CREATE,
-            StandardWatchEventKinds.ENTRY_DELETE,
-            StandardWatchEventKinds.ENTRY_MODIFY)
-          println("Activating watcher")
+          println("======================================")
           val watchKey = watcher.take()
-          val event = watchKey.pollEvents().get(0)
+          val pevents = watchKey.pollEvents()
+          val event = pevents.get(0)
+          println(pevents.toArray.length)
           val evCont = event.context()
           val evKind = event.kind()
-          watcher.close()
+
           println("Detected event in context: " + evCont + " of the kind: " + evKind)
           val changedFilePath = evCont match {
             case p: Path => p
@@ -87,25 +94,40 @@ object Application extends Controller {
           val mimetype = ("file --mime-type -b " + svgRoot + "/" + evCont) !!
           val message = if (mimetype contains "image/svg+xml") {
             println("detected  " + mimetype)
-            Thread.sleep(300)
-            Process("cp " + svgRoot + "/" + evCont + " public/images/incoming.svg") run;
-            val svgtext = readFromFilePath(Paths.get(svgRoot + "/" + evCont))
-            if (needToSendFile) {
-              needToSendFile = false
-              previouslySent = svgtext
-              "FILE\n" + svgtext
+            val oldMD5 =  md5(previouslySent)
+            Thread.sleep(50)
+            var j = 3
+            var newtext = readFromFilePath(Paths.get(svgRoot + "/" + evCont))
+            while ((j > 0) && (md5(newtext) == oldMD5)) {
+              j = j - 1
+              Thread.sleep(50)
+              newtext = readFromFilePath(Paths.get(svgRoot + "/" + evCont))
             }
-            else {
-              val dmp = new diff_match_patch
-              val patch = dmp.patch_make(previouslySent, svgtext)
-              val patchString = dmp.patch_toText(patch)
-              previouslySent = svgtext
-              "PTCH\n" + patchString
+            if ((j > 0) || (md5(newtext) != oldMD5)) {
+              println("SENDING [" + j + "]")
+              Process("cp " + svgRoot + "/" + evCont + " public/images/incoming.svg") run;
+              val svgtext = newtext
+              if (needToSendFile) {
+                needToSendFile = false
+                previouslySent = svgtext
+                "FILE\n" + svgtext
+              }
+              else {
+                val dmp = new diff_match_patch
+                val patch = dmp.patch_make(previouslySent, svgtext)
+                val patchString = dmp.patch_toText(patch)
+                previouslySent = svgtext
+                "PTCH\n" + patchString
+              }
+            } else {
+              println("(nochange)")
+              "NADA"
             }
           } else {
             println("going to ignore mimetype: " + mimetype)
             "unknown"
           }
+          watchKey.reset()
           message
         }
       )
