@@ -19,6 +19,11 @@ object Application extends Controller {
   def readFromFilePath(filePath: Path): String =
     java.nio.file.Files.readAllLines(filePath, java.nio.charset.StandardCharsets.UTF_8).mkString(separator)
 
+  def writeToFile(p: String, s: String): Unit = {
+    val pw = new java.io.PrintWriter(new File(p))
+    try pw.write(s) finally pw.close()
+  }
+
   def statusFile =
     Play.current.configuration.getString("svgserver.statusfile") match {
       case Some(s) => s
@@ -57,24 +62,28 @@ object Application extends Controller {
   val fsys = Paths.get(svgRoot).getFileSystem()
   val watcher = fsys.newWatchService()
   val myDir = Paths.get(svgRoot)
+  myDir.register(watcher,
+        StandardWatchEventKinds.ENTRY_CREATE,
+        StandardWatchEventKinds.ENTRY_DELETE,
+        StandardWatchEventKinds.ENTRY_MODIFY)
+
   def md5(s: String) = {
     MessageDigest.getInstance("MD5").digest(s.getBytes).map("%02X".format(_)).mkString
 }
 
   def webSock = WebSocket.using[String] {
     request =>
-      myDir.register(watcher,
-        StandardWatchEventKinds.ENTRY_CREATE,
-        StandardWatchEventKinds.ENTRY_DELETE,
-        StandardWatchEventKinds.ENTRY_MODIFY)
+      println("Processing request")
       val in = Iteratee.foreach[String](readFromWS).map {
         x => {
+          println(x)
+          writeToFile(svgRoot + "/" + "stopwatcher", "stop")
           println("Disconnected");
         }
       }
       var needToSendFile = true;
       var previouslySent = ""
-      val out = Enumerator.repeatM(
+      val out = Enumerator.generateM(
         scala.concurrent.Future {
           // Thread.sleep(2)
           // "current time %s".format((new java.util.Date()))
@@ -82,15 +91,10 @@ object Application extends Controller {
           val watchKey = watcher.take()
           val pevents = watchKey.pollEvents()
           val event = pevents.get(0)
-          println(pevents.toArray.length)
+          println("got " + pevents.toArray.length + " filesystem events")
           val evCont = event.context()
           val evKind = event.kind()
-
-          println("Detected event in context: " + evCont + " of the kind: " + evKind)
-          val changedFilePath = evCont match {
-            case p: Path => p
-            case _ => throw new RuntimeException("ERROR: event context not a path!")
-          }
+          println("the first event is in context: " + evCont + " of the kind: " + evKind)
           val mimetype = ("file --mime-type -b " + svgRoot + "/" + evCont) !!
           val message = if (mimetype contains "image/svg+xml") {
             println("detected  " + mimetype)
@@ -110,22 +114,28 @@ object Application extends Controller {
               if (needToSendFile) {
                 needToSendFile = false
                 previouslySent = svgtext
-                "FILE\n" + svgtext
+                Some("FILE\n" + svgtext)
               }
               else {
                 val dmp = new diff_match_patch
                 val patch = dmp.patch_make(previouslySent, svgtext)
                 val patchString = dmp.patch_toText(patch)
                 previouslySent = svgtext
-                "PTCH\n" + patchString
+                Some("PTCH\n" + patchString)
               }
             } else {
               println("(nochange)")
-              "NADA"
+              Some("NADA")
             }
           } else {
-            println("going to ignore mimetype: " + mimetype)
-            "unknown"
+            if (("/" + evCont) == "/stopwatcher") { if ((evKind + "_") == "ENTRY_CREATE_") {
+              println("stopping")
+              java.nio.file.Files.delete(java.nio.file.Paths.get(svgRoot + "/stopwatcher"))
+              None } else Some("NADA")
+            } else {
+              println("==== ERROR ====")
+              Some("NADA")
+            }
           }
           watchKey.reset()
           message
