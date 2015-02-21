@@ -52,16 +52,10 @@ rsync -av --delete public $SVGSERVER:/<span class="kw">var</span>/www/svgserver/
 ssh $SVGSERVER <span class="lit">"chown -R www-data:www-data  /var/www/svgserver/ "</span></pre><p>Also copy the configuration file to the server:</p><pre>scp conf/application.conf  $SVGSERVER:/<span class="kw">var</span>/www/svgserver.conf
 ssh $SVGSERVER <span class="lit">"chown www-data:www-data /var/www/svgserver.conf"</span></pre><p>--- this is very convenient, because we could run with the flag  <code>-Dconfig.file=...</code> (see below)  and therefore
 use different configuration file on the server (for deployment) and on the home machine (for testing).  Then edit
-that configuration file on the server and set:</p><ol class="decimal"><li><code>svgserver.secure=true</code></li></ol><p> 2. <code>svgserver.svgroot=&quot;/path/to/your/mathpump-1.0/other-party-name/&quot;</code> --- this is where the <code>mathpump</code> puts the incoming files</p><p>In the <code>nginx</code> configuration file:</p><pre>location /mathpump/assets/ {
+that configuration file on the server and set:</p><ol class="decimal"><li><code>svgserver.secure=true</code></li></ol><p> 2. <code>svgserver.svgroot=&quot;/path/to/your/mathpump-1.0/other-party-name/&quot;</code> --- this is where the <code>mathpump</code> puts the incoming files</p><p>In the <code>nginx</code> configuration file:</p><pre>location /mathpump/ {
     auth_basic <span class="lit">"Restricted"</span>;
     auth_basic_user_file htpasswd_mathpump;
-    autoindex on;
-    access_log  off;
-    log_not_found off;
-    add_header  Pragma <span class="lit">"public"</span>;
-    add_header  Cache-Control <span class="lit">"public"</span>;
-    expires     <span class="num">30</span>d;
-    alias /<span class="kw">var</span>/www/svgserver/public/;
+    try_files $uri @proxy_svg;
 }
 location /mathpump/ws {
     auth_basic <span class="lit">"Restricted"</span>;
@@ -72,12 +66,6 @@ location /mathpump/ws {
         proxy_set_header Connection <span class="lit">"upgrade"</span>;
     proxy_read_timeout <span class="num">3600</span>s;
     }
-# serve assets or request page from proxy (<span class="kw">if</span> asset not found)
-location /mathpump/ {
-    auth_basic <span class="lit">"Restricted"</span>;
-    auth_basic_user_file htpasswd_mathpump;
-    try_files $uri @proxy_svg;
-}
 # the play web server
 location @proxy_svg {
     auth_basic <span class="lit">"Restricted"</span>;
@@ -93,7 +81,8 @@ location @proxy_svg {
     proxy_set_header        X-Forwarded-Ssl    on;
     proxy_set_header        X-Forwarded-For    $proxy_add_x_forwarded_for;
 }</pre><p>And, finally, run it:</p><pre>sudo -u www-data /<span class="kw">var</span>/www/svgserver/bin/svgserver -Dhttp.port=<span class="num">39001</span> -Dhttp.address=<span class="num">127.0</span>.<span class="num">0.1</span> \
--Dconfig.file=/<span class="kw">var</span>/www/svgserver.conf -Dpidfile.path=/tmp/svgserver.pid</pre><p><b>Attention: the Java version where we compiled should not be greater than the Java version on the server!</b></p><h3> Use via remote SSH forwarding </h3><p>On your local machine, execute:</p><pre>ssh -R <span class="num">39001</span>:localhost:<span class="num">9000</span>  $SVGSERVER</pre><p>where <code>$SVGSERVER</code> is the address of you server machine (typically VPS).</p><p>Then in the <code>svgserver</code> directory of you local machine, simply run:</p><pre>./activator run</pre><p>(this will listen by default on port 9000)</p></div></div>
+-Dconfig.file=/<span class="kw">var</span>/www/svgserver.conf -Dpidfile.path=/tmp/svgserver.pid</pre><p><b>Attention: the Java version where we compiled should not be greater than the Java version on the server!</b></p><h3> Use via remote SSH forwarding </h3><p>It is possible to use this <code>svgserver</code> without <code>mathpump</code>, using the SSH tunnel.</p><p>On your local machine, execute:</p><pre>ssh -R <span class="num">39001</span>:localhost:<span class="num">9000</span>  $SVGSERVER</pre><p>where <code>$SVGSERVER</code> is the address of you server machine (typically VPS).</p><p>Set <code>svgserver.secure=true</code>  in <code>conf/application.conf</code></p><p>Then in the <code>svgserver</code> directory of you local machine, simply run:</p><pre>./activator run</pre><p>(this will listen by default on port 9000)</p><p>Then simply go to the directory which you specified in <code>application.conf</code> as <code>svgserver.svgroot</code> and edit SVG files
+there.</p></div></div>
         
 
       <div id="mbrsel">
