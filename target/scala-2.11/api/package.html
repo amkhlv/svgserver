@@ -47,17 +47,17 @@
       </span>
       </h4>
       
-          <div id="comment" class="fullcommenttop"><div class="comment cmt"><h3> Building this documentation </h3><pre>sbt clean doc</pre><h3> Running in development mode </h3><p>Set <code>svgserver.secure=false</code> in <code>conf/application.conf</code>.</p><pre>sbt run</pre><p>Then navigate to <a href="http://localhost:9000" target="_blank">http://localhost:9000</a></p><h3> Deploy </h3><p>Run over SSL. First build it:</p><pre>sbt clean stage</pre><p>Then put it on the server:</p><pre>rsync -av --delete target/universal/stage/   $SVGSERVER:/<span class="kw">var</span>/www/svgserver/
+          <div id="comment" class="fullcommenttop"><div class="comment cmt"><h3> Building this documentation </h3><pre>./activator clean doc</pre><h3> Running in development mode </h3><p>Set <code>svgserver.secure=false</code> in <code>conf/application.conf</code>.</p><pre>./activator run</pre><p>Then navigate to <a href="http://localhost:9000" target="_blank">http://localhost:9000</a></p><h3> Deploy </h3><p>Run over SSL. First build it:</p><pre>./activator clean stage</pre><p>Then put it on the server:</p><pre>rsync -av --delete target/universal/stage/   $SVGSERVER:/<span class="kw">var</span>/www/svgserver/
 rsync -av --delete public $SVGSERVER:/<span class="kw">var</span>/www/svgserver/
 ssh $SVGSERVER <span class="lit">"chown -R www-data:www-data  /var/www/svgserver/ "</span></pre><p>Also copy the configuration file to the server:</p><pre>scp conf/application.conf  $SVGSERVER:/<span class="kw">var</span>/www/svgserver.conf
 ssh $SVGSERVER <span class="lit">"chown www-data:www-data /var/www/svgserver.conf"</span></pre><p>--- this is very convenient, because we could run with the flag  <code>-Dconfig.file=...</code> (see below)  and therefore
 use different configuration file on the server (for deployment) and on the home machine (for testing).  Then edit
-that configuration file on the server and set:</p><ol class="decimal"><li><code>svgserver.secure=true</code></li></ol><p> 2. <code>svgserver.svgroot=&quot;/path/to/your/mathpump-1.0/other-party-name/&quot;</code> --- this is where the <code>mathpump</code> puts the incoming files</p><p>In the <code>nginx</code> configuration file:</p><pre>location /mathpump/ {
+that configuration file on the server and set:</p><ol class="decimal"><li><code>svgserver.secure=true</code></li></ol><p> 2. <code>svgserver.svgroot=&quot;/path/to/your/mathpump-1.0/other-party-name/&quot;</code> --- this is where the <code>mathpump</code> puts the incoming files</p><p> 3. <code>application.context=&quot;/myprefix&quot;</code></p><p> 4. <code>svgserver.statusfile=&quot;/path/to/your/svgserver.log&quot;</code></p><p>In the <code>nginx</code> configuration file (notice the <code>myprefix</code> from <code>application.context</code>):</p><pre>location /myprefix/mathpump/ {
     auth_basic <span class="lit">"Restricted"</span>;
     auth_basic_user_file htpasswd_mathpump;
     try_files $uri @proxy_svg;
 }
-location /mathpump/ws {
+location /myprefix/mathpump/ws {
     auth_basic <span class="lit">"Restricted"</span>;
     auth_basic_user_file htpasswd_mathpump;
             proxy_pass http:<span class="cmt">//localhost:39001;</span>

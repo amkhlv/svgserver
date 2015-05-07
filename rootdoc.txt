@@ -1,7 +1,7 @@
 = Building this documentation =
 
 {{{
-sbt clean doc
+./activator clean doc
 }}}
 
 = Running in development mode =
@@ -9,7 +9,7 @@ sbt clean doc
 Set `svgserver.secure=false` in `conf/application.conf`.
 
 {{{
-sbt run
+./activator run
 }}}
 
 Then navigate to [[http://localhost:9000]]
@@ -19,7 +19,7 @@ Then navigate to [[http://localhost:9000]]
 Run over SSL. First build it:
 
 {{{
-sbt clean stage
+./activator clean stage
 }}}
 
 Then put it on the server:
@@ -45,16 +45,19 @@ that configuration file on the server and set:
 
  2. `svgserver.svgroot="/path/to/your/mathpump-1.0/other-party-name/"` --- this is where the `mathpump` puts the incoming files
 
+ 3. `application.context="/myprefix"`
 
-In the `nginx` configuration file:
+ 4. `svgserver.statusfile="/path/to/your/svgserver.log"`
+
+In the `nginx` configuration file (notice the `myprefix` from `application.context`):
 
 {{{
-location /mathpump/ {
+location /myprefix/mathpump/ {
     auth_basic "Restricted";
     auth_basic_user_file htpasswd_mathpump;
     try_files $uri @proxy_svg;
 }
-location /mathpump/ws {
+location /myprefix/mathpump/ws {
     auth_basic "Restricted";
     auth_basic_user_file htpasswd_mathpump;
             proxy_pass http://localhost:39001;
