@@ -1,16 +1,17 @@
 package controllers
 
-import scala.language.postfixOps
-import play.api._
-import play.api.mvc._
-import play.api.libs.iteratee._
-import play.api.libs.concurrent.Execution.Implicits._
-import java.io.{File, FileReader, FileWriter, BufferedReader}
-import java.nio.file.{Paths, Files, StandardOpenOption, Path, StandardWatchEventKinds}
-import scala.collection.JavaConversions._
-import play.api.Play
-import scala.sys.process._
+import java.io.{File, FileWriter}
+import java.nio.file.{Path, Paths, StandardWatchEventKinds}
 import java.security.MessageDigest
+
+import play.api.{Play, _}
+import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.iteratee._
+import play.api.mvc._
+
+import scala.collection.JavaConversions._
+import scala.language.postfixOps
+import scala.sys.process._
 
 
 object Application extends Controller {
@@ -109,7 +110,7 @@ object Application extends Controller {
             }
             if ((j > 0) || (md5(newtext) != oldMD5)) {
               println("SENDING [" + j + "]")
-              Process("cp " + svgRoot + "/" + evCont + " public/images/incoming.svg") run;
+              //Process("cp " + svgRoot + "/" + evCont + " public/images/incoming.svg") run;
               val svgtext = newtext
               if (needToSendFile) {
                 needToSendFile = false
