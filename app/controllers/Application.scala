@@ -43,6 +43,8 @@ object Application extends Controller {
       case None => throw new RuntimeException("ERROR: have to define svgserver.secure in Configuration")
     }
 
+  def execOnReceipt = Play.current.configuration.getString("svgserver.execOnReceipt")
+
   def index = Action {
     request => Ok(views.html.index(request))
   }
@@ -57,6 +59,14 @@ object Application extends Controller {
     val fw = new FileWriter(statusFile, true)
     try {
       fw.write(s + "\n")
+      if (s == "OK") {
+        execOnReceipt match {
+          case Some(x) => if (! (x == "")) {
+            Process(x) run;
+          }
+          case None => {}
+        }
+      }
     }
     finally fw.close()
   }
